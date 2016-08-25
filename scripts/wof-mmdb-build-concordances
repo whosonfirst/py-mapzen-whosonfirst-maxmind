@@ -1,0 +1,124 @@
+#!/usr/bin/env python
+# -*-python-*-
+
+import os
+import sys
+import csv
+import logging
+
+import mapzen.whosonfirst.api.client
+
+if __name__ == '__main__':
+
+    import optparse
+    opt_parser = optparse.OptionParser()
+
+    opt_parser.add_option('--access-token', dest='token', action='store', default=None, help='A valid Who\'s On First API access token')
+    opt_parser.add_option('--countries', dest='countries', action='store', default=None, help='...')
+
+    opt_parser.add_option('-v', '--verbose', dest='verbose', action='store_true', default=False, help='Be chatty (default is false)')
+    options, args = opt_parser.parse_args()
+
+    if options.verbose:	
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
+
+    #
+
+    lookup = {}
+
+    countries = os.path.abspath(options.countries)
+    fh = open(countries, "r")
+
+    reader = csv.DictReader(fh)
+
+    for row in reader:
+
+        wofid = row['id']
+        code = row['wof_country']
+
+        lookup[code] = wofid
+
+    #
+
+    api = mapzen.whosonfirst.api.client.OAuth2(options.token)
+
+    #
+
+    mm_dump = os.path.abspath(args[0])
+
+    fh = open(mm_dump, 'r')
+    reader = csv.DictReader(fh)
+
+    writer = csv.DictWriter(sys.stdout, fieldnames=('gn:id', 'wof:id', 'mm:city', 'mm:country', 'wof:possible'))
+    writer.writeheader()
+
+    for row in reader:
+
+        # do we already know what this geonames ID is?
+
+        method = 'whosonfirst.concordances.getById'
+        args = { 'source': 'gn:id', 'id': row['geoname_id'] }
+
+        rsp = api.execute_method(method, args)
+        
+        out = {
+            'gn:id': int(args['id']),
+            'mm:city': row['city_name'],
+            'mm:country': row['country_iso_code'],
+            'wof:id': 0,
+            'wof:possible': '',
+        }
+
+        # bingo!
+
+        if rsp['total'] == 1:
+            out['wof:id'] = rsp['results'][0]['wof:id']
+            writer.writerow(out)
+            continue
+
+        # we don't even know what this place is called...
+
+        if row['city_name'] == '':
+            writer.writerow(out)
+            continue
+
+        # let's see if we can tease out the place by name (and country)
+
+        method = "whosonfirst.places.search"
+        args = { "name": row["city_name"], "placetype": "locality" }
+
+        country = row['country_iso_code'];
+        country_id = lookup.get(country, None)
+
+        if country_id:
+            args["country_id"] = country_id
+
+        rsp = api.execute_method(method, args)
+        total = rsp["total"]
+
+        # nothing...
+
+        if total == 0:
+            writer.writerow(out)
+            continue
+
+        # okay we got something
+
+        if total == 1:
+            out['wof:id'] = rsp['results'][0]['wof:id']
+            writer.writerow(out)
+            continue
+
+        # we got a bunch of something...
+
+        maybe = []
+
+        for r in rsp['results']:
+            maybe.append(str(r['wof:id']))
+            
+        out['wof:id'] = -1
+        out['wof:possible'] = ";".join(maybe)
+            
+        writer.writerow(out)

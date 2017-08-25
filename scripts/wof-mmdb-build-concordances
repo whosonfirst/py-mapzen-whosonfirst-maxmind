@@ -13,7 +13,7 @@ if __name__ == '__main__':
     import optparse
     opt_parser = optparse.OptionParser()
 
-    opt_parser.add_option('--access-token', dest='token', action='store', default=None, help='A valid Who\'s On First API access token')
+    opt_parser.add_option('--apikey', dest='apikey', action='store', default=None, help='A valid Mapzen API key')
     opt_parser.add_option('--countries', dest='countries', action='store', default=None, help='...')
 
     opt_parser.add_option('-v', '--verbose', dest='verbose', action='store_true', default=False, help='Be chatty (default is false)')
@@ -42,7 +42,7 @@ if __name__ == '__main__':
 
     #
 
-    api = mapzen.whosonfirst.api.client.OAuth2(options.token)
+    api = mapzen.whosonfirst.api.client.Mapzen(options.apikey)
 
     #
 
@@ -65,22 +65,22 @@ if __name__ == '__main__':
         
         out = {
             'gn:id': int(args['id']),
-            'mm:city': row['city_name'],
+            'mm:city': row.get('city_name',""),
             'mm:country': row['country_iso_code'],
-            'wof:id': 0,
+            'wof:id': -1,
             'wof:possible': '',
         }
 
         # bingo!
 
         if rsp['total'] == 1:
-            out['wof:id'] = rsp['results'][0]['wof:id']
+            out['wof:id'] = rsp['concordances'][0]['wof:id']
             writer.writerow(out)
             continue
 
         # we don't even know what this place is called...
 
-        if row['city_name'] == '':
+        if row.get('city_name', "") == '':
             writer.writerow(out)
             continue
 

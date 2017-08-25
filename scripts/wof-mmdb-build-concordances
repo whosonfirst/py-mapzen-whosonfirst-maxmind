@@ -63,10 +63,13 @@ if __name__ == '__main__':
 
         rsp = api.execute_method(method, args)
         
+        gnid = int(args['id'])
+        iso = row['country_iso_code']
+
         out = {
-            'gn:id': int(args['id']),
+            'gn:id': gnid,
             'mm:city': row.get('city_name',""),
-            'mm:country': row['country_iso_code'],
+            'mm:country': iso,
             'wof:id': -1,
             'wof:possible': '',
         }
@@ -78,6 +81,49 @@ if __name__ == '__main__':
             writer.writerow(out)
             continue
 
+        # because the concordances methods don't have existential filters yet...
+
+        if rsp['total'] > 1:
+
+            possible = []
+            remaining = []
+
+            for c in rsp['concordances']:
+                possible.append(c['wof:id'])
+
+            possible = ','.join(map(str, possible))
+
+            method = 'whosonfirst.places.getInfoMulti'
+            args2 = { 'ids': possible, 'extras': 'edtf:,mz:is_current,iso:' }
+
+            rsp = api.execute_method(method, args2)
+
+            for pl in rsp['places']:
+
+                wofid = pl["wof:id"]
+
+                if pl.get("mz:is_current", "-1") == "0":
+                    print "-1 %s (%s) fails is current" % (wofid, iso)
+                    continue
+
+                if pl.get("edtf:deprecated", "uuuu") != "uuuu":
+                    print "-1 %s (%s) fails deprecated" % (wofid, iso)
+                    continue
+
+                """
+                if pl.get("iso:country", "XX") != iso:
+                    print "-1 %s (%s) fails country" % (wofid, iso)
+                    continue
+                """
+
+                remaining.append(pl)
+
+            if len(remaining) == 1:
+
+                out['wof:id'] = remaining[0]['wof:id']
+                writer.writerow(out)
+                continue
+                
         # we don't even know what this place is called...
 
         if row.get('city_name', "") == '':

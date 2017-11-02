@@ -153,15 +153,20 @@ if __name__ == '__main__':
         # okay we got something
 
         if total == 1:
-            out['wof:id'] = rsp['results'][0]['wof:id']
-            writer.writerow(out)
-            continue
+
+            try:
+                out['wof:id'] = rsp['places'][0]['wof:id']
+                writer.writerow(out)
+                continue
+            except Exception, e:
+                logging.warning("WHAT...%s", e)
+                logging.warning(rsp)
 
         # we got a bunch of something...
 
         maybe = []
 
-        for r in rsp['results']:
+        for r in rsp['places']:
             maybe.append(str(r['wof:id']))
             
         out['wof:id'] = -1

@@ -98,7 +98,10 @@ if __name__ == '__main__':
 
             rsp = api.execute_method(method, args2)
 
-            for pl in rsp['places']:
+            if not rsp.has_key('places'):
+                logging.warning("WTF %s" % rsp)
+
+            for pl in rsp.get('places', []):
 
                 wofid = pl["wof:id"]
 

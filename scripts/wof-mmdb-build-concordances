@@ -62,7 +62,11 @@ if __name__ == '__main__':
         args = { 'source': 'gn:id', 'id': row['geoname_id'] }
 
         rsp = api.execute_method(method, args)
-        
+
+        if rsp.get('stat', None) != "ok":
+            logging.warning("failed to %s (%s) : %s" % (method, args, rsp))
+            continue
+
         gnid = int(args['id'])
         iso = row['country_iso_code']
 
@@ -98,8 +102,8 @@ if __name__ == '__main__':
 
             rsp = api.execute_method(method, args2)
 
-            if not rsp.has_key('places'):
-                logging.warning("WTF %s" % rsp)
+            if rsp.get('stat', None) != "ok":
+                logging.warning("failed to %s (%s) : %s" % (method, args2, rsp))
 
             for pl in rsp.get('places', []):
 
@@ -145,6 +149,11 @@ if __name__ == '__main__':
             args["country_id"] = country_id
 
         rsp = api.execute_method(method, args)
+
+        if rsp.get('stat', None) != "ok":
+            logging.warning("failed to %s (%s) : %s" % (method, args, rsp))
+            continue
+
         total = rsp["total"]
 
         # nothing...

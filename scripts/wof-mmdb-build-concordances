@@ -61,9 +61,15 @@ if __name__ == '__main__':
         method = 'whosonfirst.concordances.getById'
         args = { 'source': 'gn:id', 'id': row['geoname_id'] }
 
-        rsp = api.execute_method(method, args)
+        try :
+            rsp = api.execute_method(method, args)
 
-        if rsp.get('stat', None) != "ok":
+            if rsp.get('stat', None) != "ok":
+                logging.warning("failed to %s (%s) : %s" % (method, args, rsp))
+                continue
+
+        except Exception, e:
+
             logging.warning("failed to %s (%s) : %s" % (method, args, rsp))
             continue
 
@@ -100,12 +106,21 @@ if __name__ == '__main__':
             method = 'whosonfirst.places.getInfoMulti'
             args2 = { 'ids': possible, 'extras': 'edtf:,mz:is_current,iso:' }
 
-            rsp = api.execute_method(method, args2)
+            places = []
 
-            if rsp.get('stat', None) != "ok":
+            try:
+
+                rsp = api.execute_method(method, args2)
+
+                if rsp.get('stat', None) != "ok":
+                    logging.warning("failed to %s (%s) : %s" % (method, args2, rsp))
+                else:
+                    rsp.get('places', [])
+
+            except Exception, e:
                 logging.warning("failed to %s (%s) : %s" % (method, args2, rsp))
-
-            for pl in rsp.get('places', []):
+                
+            for pl in places:
 
                 wofid = pl["wof:id"]
 
@@ -148,9 +163,15 @@ if __name__ == '__main__':
         if country_id:
             args["country_id"] = country_id
 
-        rsp = api.execute_method(method, args)
+        try:
+            rsp = api.execute_method(method, args)
 
-        if rsp.get('stat', None) != "ok":
+            if rsp.get('stat', None) != "ok":
+                logging.warning("failed to %s (%s) : %s" % (method, args, rsp))
+                continue
+
+        except Exception, e:
+
             logging.warning("failed to %s (%s) : %s" % (method, args, rsp))
             continue
 
